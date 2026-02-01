@@ -33,8 +33,9 @@ downloads/
 *.mp3
 *.m4a
 
-# Environment variables
+# Environment variables & Sensitive Files
 .env
+telegram-bot.service
 
 # IDE
 .vscode/
@@ -46,3 +47,6 @@ downloads/
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log

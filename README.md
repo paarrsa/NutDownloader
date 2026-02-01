@@ -15,7 +15,7 @@ A powerful Telegram bot that downloads videos from 1000+ websites using yt-dlp. 
 ## Project Structure
 
 ```
-telegram-ytdlp-bot/
+NutDownloader/
 ├── bot.py                      # Main bot file
 ├── requirements.txt            # Python dependencies
 ├── .env.example               # Environment variables template
@@ -70,27 +70,27 @@ ffmpeg -version
 
 ### Step 4: Clone or Upload the Bot
 
-**Option A: Using Git (if you have a repository)**
+**Option A: Using Git**
 ```bash
 cd ~
-git clone https://github.com/yourusername/telegram-ytdlp-bot.git
-cd telegram-ytdlp-bot
+git clone https://github.com/paarrsa/NutDownloader.git
+cd NutDownloader
 ```
 
 **Option B: Manual Upload**
 ```bash
 # Create directory
-mkdir -p ~/telegram-ytdlp-bot
-cd ~/telegram-ytdlp-bot
+mkdir -p ~/NutDownloader
+cd ~/NutDownloader
 
 # Upload files using SCP from your local machine:
-# scp -r /path/to/telegram-ytdlp-bot/* your_username@your_vps_ip:~/telegram-ytdlp-bot/
+# scp -r /path/to/NutDownloader/* your_username@your_vps_ip:~/NutDownloader/
 ```
 
 ### Step 5: Create Virtual Environment
 
 ```bash
-cd ~/telegram-ytdlp-bot
+cd ~/NutDownloader
 python3 -m venv venv
 source venv/bin/activate
 ```
@@ -155,9 +155,9 @@ nano telegram-bot.service
 Update these lines:
 ```ini
 User=YOUR_USERNAME  # Replace with your username (run: whoami)
-WorkingDirectory=/home/YOUR_USERNAME/telegram-ytdlp-bot
-Environment="PATH=/home/YOUR_USERNAME/telegram-ytdlp-bot/venv/bin"
-ExecStart=/home/YOUR_USERNAME/telegram-ytdlp-bot/venv/bin/python bot.py
+WorkingDirectory=/home/YOUR_USERNAME/NutDownloader
+Environment="PATH=/home/YOUR_USERNAME/NutDownloader/venv/bin"
+ExecStart=/home/YOUR_USERNAME/NutDownloader/venv/bin/python bot.py
 ```
 
 Copy the service file:
