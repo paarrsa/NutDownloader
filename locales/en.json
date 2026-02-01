@@ -1,0 +1,23 @@
+{
+  "welcome": "Hello! 👋\n\nI'm a video downloader bot. I can download videos from over 1000 websites for you!\n\n🎬 Just send me a video link.\n\n📝 Commands:\n/start - Start the bot\n/help - Help\n/formats - Show available formats for last link\n/cancel - Cancel current operation",
+  "help": "📖 How to use:\n\n1️⃣ Send a video link\n2️⃣ Choose your preferred format\n3️⃣ Wait for download\n\n✨ Supported websites:\n• YouTube\n• Instagram\n• Twitter/X\n• TikTok\n• And over 1000 other sites!\n\n⚙️ Commands:\n/formats - Show all available formats\n/cancel - Cancel download",
+  "send_link": "Please send a video link:",
+  "processing": "⏳ Processing...",
+  "extracting_info": "🔍 Extracting information...",
+  "downloading": "⬇️ Downloading...\n\nThis may take a few minutes.",
+  "uploading": "⬆️ Uploading to Telegram...",
+  "download_complete": "✅ Download completed successfully!",
+  "error_occurred": "❌ An error occurred:\n\n{error}",
+  "invalid_url": "❌ Invalid link. Please send a valid URL.",
+  "file_too_large": "❌ File is too large (max 50MB for Telegram).\n\nPlease select a lower quality format.",
+  "no_url_saved": "❌ No link saved. Please send a link first.",
+  "formats_available": "📋 Available formats:\n\n{formats}\n\nTo download, send the format number (example: 18)",
+  "select_format": "Please select your preferred format:\n\n{formats}",
+  "invalid_format": "❌ Invalid format. Please select from the buttons below.",
+  "operation_cancelled": "❌ Operation cancelled.",
+  "downloading_progress": "⬇️ Downloading... {percent}%",
+  "best_quality": "🌟 Best Quality",
+  "audio_only": "🎵 Audio Only",
+  "video_title": "📹 Title: {title}",
+  "unsupported_site": "❌ This website is not supported or the link is invalid."
+}
