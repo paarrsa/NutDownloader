@@ -1,0 +1,16 @@
+[Unit]
+Description=Telegram Video Downloader Bot
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+WorkingDirectory=/path/to/your/NutDownloader
+Environment="PATH=/path/to/your/NutDownloader/venv/bin"
+Environment="BOT_TOKEN=YOUR_BOT_TOKEN_HERE"
+ExecStart=/path/to/your/NutDownloader/venv/bin/python bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -37,6 +37,9 @@ downloads/
 .env
 telegram-bot.service
 
+# Example files are OK to commit
+!telegram-bot.service.example
+
 # IDE
 .vscode/
 .idea/
