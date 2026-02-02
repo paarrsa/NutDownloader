@@ -1,7 +1,9 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatMember
 from telegram.ext import ContextTypes
+from telegram.error import BadRequest
 from utils.localization import i18n
 from utils.downloader import VideoDownloader
+from config.settings import REQUIRED_CHANNELS
 import os
 
 
@@ -9,13 +11,74 @@ import os
 downloader = VideoDownloader()
 
 
+async def check_channel_membership(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """
+    Check if user is member of required channels
+    
+    Returns:
+        True if user is member of all required channels or no channels required
+        False if user is not member
+    """
+    if not REQUIRED_CHANNELS:
+        return True
+    
+    user_id = update.effective_user.id
+    not_joined_channels = []
+    
+    for channel in REQUIRED_CHANNELS:
+        try:
+            member = await context.bot.get_chat_member(chat_id=channel, user_id=user_id)
+            if member.status in [ChatMember.LEFT, ChatMember.BANNED]:
+                not_joined_channels.append(channel)
+        except BadRequest:
+            # Channel might not exist or bot is not admin
+            print(f"Error checking membership for channel: {channel}")
+            continue
+    
+    if not_joined_channels:
+        # Create join buttons for channels user hasn't joined
+        keyboard = []
+        for channel in not_joined_channels:
+            # Remove @ if present to create proper link
+            channel_username = channel.replace('@', '')
+            keyboard.append([InlineKeyboardButton(
+                f"🔗 عضویت در {channel}",
+                url=f"https://t.me/{channel_username}"
+            )])
+        
+        # Add check membership button
+        keyboard.append([InlineKeyboardButton("✅ عضو شدم، بررسی کن", callback_data='check_membership')])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        message = i18n.get('join_channels')
+        
+        if update.callback_query:
+            await update.callback_query.answer(i18n.get('not_member_alert'), show_alert=True)
+            await update.callback_query.message.reply_text(message, reply_markup=reply_markup)
+        else:
+            await update.message.reply_text(message, reply_markup=reply_markup)
+        
+        return False
+    
+    return True
+
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command"""
+    # Check channel membership
+    if not await check_channel_membership(update, context):
+        return
+    
     await update.message.reply_text(i18n.get('welcome'))
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /help command"""
+    # Check channel membership
+    if not await check_channel_membership(update, context):
+        return
+    
     await update.message.reply_text(i18n.get('help'))
 
 
@@ -26,37 +89,12 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(i18n.get('operation_cancelled'))
 
 
-async def formats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /formats command - show available formats for last URL"""
-    url = context.user_data.get('last_url')
-    
-    if not url:
-        await update.message.reply_text(i18n.get('no_url_saved'))
-        return
-    
-    # Send processing message
-    processing_msg = await update.message.reply_text(i18n.get('extracting_info'))
-    
-    # Get formats
-    formats = downloader.get_formats(url)
-    
-    if not formats:
-        await processing_msg.edit_text(i18n.get('error_occurred', error='Could not extract formats'))
-        return
-    
-    # Format list for display
-    formats_text = ""
-    for i, fmt in enumerate(formats[:20], 1):  # Limit to first 20 formats
-        size = fmt['filesize']
-        size_mb = f"{size / (1024 * 1024):.1f}MB" if size else "Unknown"
-        
-        formats_text += f"{i}. {fmt['format_id']} - {fmt['ext']} - {fmt['resolution']} ({size_mb})\n"
-    
-    await processing_msg.edit_text(i18n.get('formats_available', formats=formats_text))
-
-
 async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle incoming URLs"""
+    """Handle incoming URLs with inline quality selection"""
+    # Check channel membership
+    if not await check_channel_membership(update, context):
+        return
+    
     url = update.message.text.strip()
     
     # Basic URL validation
@@ -77,26 +115,45 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await processing_msg.edit_text(i18n.get('unsupported_site'))
         return
     
-    # Get video title
+    # Get video title and duration
     title = info.get('title', 'Unknown')
+    duration = info.get('duration', 0)
     context.user_data['video_title'] = title
     
-    # Create format selection buttons
+    # Format duration
+    duration_str = ""
+    if duration:
+        minutes = duration // 60
+        seconds = duration % 60
+        duration_str = f"\n⏱ مدت زمان: {minutes}:{seconds:02d}"
+    
+    # Create quality selection buttons (inline keyboard)
     keyboard = [
-        [InlineKeyboardButton(i18n.get('best_quality'), callback_data='format_best')],
-        [InlineKeyboardButton(i18n.get('audio_only'), callback_data='format_audio')],
+        [InlineKeyboardButton("🌟 بهترین کیفیت", callback_data='quality_best')],
+        [InlineKeyboardButton("📺 کیفیت متوسط (720p)", callback_data='quality_medium')],
+        [InlineKeyboardButton("📱 کیفیت پایین (360p)", callback_data='quality_low')],
+        [InlineKeyboardButton("🎵 فقط صدا (MP3)", callback_data='quality_audio')],
     ]
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    message_text = i18n.get('video_title', title=title) + "\n\n" + i18n.get('select_format', formats='')
+    message_text = f"📹 {title}{duration_str}\n\n{i18n.get('select_format', formats='')}"
     
     await processing_msg.edit_text(message_text, reply_markup=reply_markup)
 
 
-async def handle_format_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle format selection from inline keyboard"""
+async def handle_quality_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle quality selection from inline keyboard"""
     query = update.callback_query
+    
+    # Check if this is the membership check callback
+    if query.data == 'check_membership':
+        await query.answer()
+        # Re-check membership
+        if await check_channel_membership(update, context):
+            await query.message.edit_text(i18n.get('membership_verified'))
+        return
+    
     await query.answer()
     
     url = context.user_data.get('last_url')
@@ -108,13 +165,17 @@ async def handle_format_selection(update: Update, context: ContextTypes.DEFAULT_
     # Update message to show downloading status
     await query.edit_message_text(i18n.get('downloading'))
     
-    # Determine which format to download
-    format_choice = query.data
+    # Determine which quality to download
+    quality_choice = query.data
     
     try:
-        if format_choice == 'format_best':
+        if quality_choice == 'quality_best':
             filepath = downloader.download_best(url)
-        elif format_choice == 'format_audio':
+        elif quality_choice == 'quality_medium':
+            filepath = downloader.download_medium(url)
+        elif quality_choice == 'quality_low':
+            filepath = downloader.download_low(url)
+        elif quality_choice == 'quality_audio':
             filepath = downloader.download_audio(url)
         else:
             await query.edit_message_text(i18n.get('invalid_format'))
@@ -123,6 +184,14 @@ async def handle_format_selection(update: Update, context: ContextTypes.DEFAULT_
         if not filepath:
             await query.edit_message_text(i18n.get('file_too_large'))
             return
+        
+        # Check if file exists and get size
+        if not os.path.exists(filepath):
+            await query.edit_message_text(i18n.get('error_occurred', error='فایل دانلود نشد'))
+            return
+        
+        file_size = os.path.getsize(filepath)
+        file_size_mb = file_size / (1024 * 1024)
         
         # Upload file to Telegram
         await query.edit_message_text(i18n.get('uploading'))
@@ -133,14 +202,19 @@ async def handle_format_selection(update: Update, context: ContextTypes.DEFAULT_
                 await context.bot.send_audio(
                     chat_id=query.message.chat_id,
                     audio=audio_file,
-                    title=context.user_data.get('video_title', 'Audio')
+                    title=context.user_data.get('video_title', 'Audio'),
+                    caption=f"🎵 {context.user_data.get('video_title', '')}\n\n📦 حجم: {file_size_mb:.1f} MB"
                 )
         else:
             with open(filepath, 'rb') as video_file:
+                # Send as video with proper width/height to preserve aspect ratio
                 await context.bot.send_video(
                     chat_id=query.message.chat_id,
                     video=video_file,
-                    caption=context.user_data.get('video_title', '')
+                    caption=f"📹 {context.user_data.get('video_title', '')}\n\n📦 حجم: {file_size_mb:.1f} MB",
+                    supports_streaming=True,
+                    width=None,  # Let Telegram detect
+                    height=None  # Let Telegram detect
                 )
         
         # Delete the processing message and send success message
@@ -154,7 +228,12 @@ async def handle_format_selection(update: Update, context: ContextTypes.DEFAULT_
         downloader.cleanup_file(filepath)
         
     except Exception as e:
-        await query.edit_message_text(i18n.get('error_occurred', error=str(e)))
+        error_msg = str(e)
+        if "file is too big" in error_msg.lower():
+            await query.edit_message_text(i18n.get('file_too_large'))
+        else:
+            await query.edit_message_text(i18n.get('error_occurred', error=error_msg))
+        
         if 'filepath' in locals() and filepath:
             downloader.cleanup_file(filepath)
 

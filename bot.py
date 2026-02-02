@@ -17,9 +17,8 @@ from handlers.message_handlers import (
     start_command,
     help_command,
     cancel_command,
-    formats_command,
     handle_message,
-    handle_format_selection
+    handle_quality_selection
 )
 
 # Configure logging
@@ -44,10 +43,9 @@ def main():
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("cancel", cancel_command))
-    application.add_handler(CommandHandler("formats", formats_command))
     
-    # Register callback query handler for inline buttons
-    application.add_handler(CallbackQueryHandler(handle_format_selection))
+    # Register callback query handler for inline buttons (quality and membership check)
+    application.add_handler(CallbackQueryHandler(handle_quality_selection))
     
     # Register message handler for text messages
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
